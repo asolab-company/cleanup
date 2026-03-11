@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "app_bg_mainplug_sel.pdf",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

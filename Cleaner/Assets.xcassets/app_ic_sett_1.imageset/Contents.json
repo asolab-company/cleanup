@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "app_ic_sett_1.pdf",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
