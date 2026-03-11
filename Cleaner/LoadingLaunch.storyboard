@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24157" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Y6W-Oz-Xv6">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24153"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="w4f-v6-ZnR">
+            <objects>
+                <viewController id="Y6W-Oz-Xv6" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="I8d-gw-z5L">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="app_bg" translatesAutoresizingMaskIntoConstraints="NO" id="XRT-JR-qj7"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="app_logo" translatesAutoresizingMaskIntoConstraints="NO" id="YTC-Gm-Vop"/>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="vUN-kp-3ea"/>
+                        <color key="backgroundColor" red="0.83137254900000004" green="0.85098039219999995" blue="0.94901960780000005" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstAttribute="trailing" secondItem="XRT-JR-qj7" secondAttribute="trailing" id="Ane-41-Rr9"/>
+                            <constraint firstItem="YTC-Gm-Vop" firstAttribute="centerX" secondItem="I8d-gw-z5L" secondAttribute="centerX" id="H4a-2m-CgV"/>
+                            <constraint firstItem="YTC-Gm-Vop" firstAttribute="width" constant="170" id="I7S-2R-Y5j"/>
+                            <constraint firstItem="XRT-JR-qj7" firstAttribute="leading" secondItem="I8d-gw-z5L" secondAttribute="leading" id="Q3r-TR-pMq"/>
+                            <constraint firstAttribute="bottom" secondItem="XRT-JR-qj7" secondAttribute="bottom" id="QNe-hj-Bqf"/>
+                            <constraint firstItem="XRT-JR-qj7" firstAttribute="top" secondItem="I8d-gw-z5L" secondAttribute="top" id="YfD-LH-kAx"/>
+                            <constraint firstItem="YTC-Gm-Vop" firstAttribute="height" constant="170" id="hKk-50-L4j"/>
+                            <constraint firstItem="YTC-Gm-Vop" firstAttribute="centerY" secondItem="vUN-kp-3ea" secondAttribute="centerY" id="pVQ-A9-jNG"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="JcT-gR-6fR" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="52.671755725190835" y="-30.985915492957744"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="app_bg" width="1" height="1"/>
+        <image name="app_logo" width="1" height="1"/>
+    </resources>
+</document>

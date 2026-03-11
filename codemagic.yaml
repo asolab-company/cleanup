@@ -1,0 +1,53 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    environment:
+      xcode: 16.4
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.cleanup.utility
+      groups:
+        - Cleaner
+    scripts:
+      - name: Sanity check env
+        script: |
+          test -n "$APP_STORE_CONNECT_ISSUER_ID" || (echo "ISSUER_ID empty" && exit 1)
+          test -n "$APP_STORE_CONNECT_KEY_ID" || (echo "KEY_ID empty" && exit 1)
+          test -n "$APP_STORE_CONNECT_PRIVATE_KEY" || (echo "PRIVATE_KEY empty" && exit 1)
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files \
+            "com.cleanup.utility" \
+            --type IOS_APP_STORE \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_ID" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --create
+
+      - name: Setup keychain
+        script: |
+          keychain initialize
+          keychain add-certificates
+
+      - name: Apply provisioning to project
+        script: |
+          xcode-project use-profiles --project "Cleaner.xcodeproj"
+
+      - name: Build iOS ipa
+        script: |
+          xcode-project build-ipa \
+            --project "Cleaner.xcodeproj" \
+            --scheme "Cleaner" \
+            --config Release
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        submit_to_testflight: true
+        submit_to_app_store: false
