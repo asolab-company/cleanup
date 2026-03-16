@@ -12,7 +12,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if appUnlocked {
-                MainView {
+                MainView(subscriptionManager: subscriptionManager) {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         appUnlocked = false
                         delayPaywallCloseButton = false

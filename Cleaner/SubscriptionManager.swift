@@ -7,12 +7,14 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var productsByID: [String: Product] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var isPurchasing = false
+    @Published private(set) var hasActiveSubscription = false
     @Published var errorText: String?
 
     private var updateTask: Task<Void, Never>?
 
     init() {
         updateTask = observeTransactions()
+        Task { await refreshSubscriptionStatus() }
     }
 
     deinit {
@@ -35,6 +37,7 @@ final class SubscriptionManager: ObservableObject {
         } catch {
             errorText = error.localizedDescription
         }
+        await refreshSubscriptionStatus()
     }
 
     func product(for id: String) -> Product? {
@@ -57,6 +60,7 @@ final class SubscriptionManager: ObservableObject {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
                 await transaction.finish()
+                hasActiveSubscription = true
                 return true
             case .userCancelled:
                 return false
@@ -74,14 +78,19 @@ final class SubscriptionManager: ObservableObject {
     func restorePurchases() async -> Bool {
         do {
             try await AppStore.sync()
-            return await hasActiveSubscription()
+            await refreshSubscriptionStatus()
+            return hasActiveSubscription
         } catch {
             errorText = error.localizedDescription
             return false
         }
     }
 
-    func hasActiveSubscription() async -> Bool {
+    func refreshSubscriptionStatus() async {
+        hasActiveSubscription = await checkActiveSubscription()
+    }
+
+    func checkActiveSubscription() async -> Bool {
         for await result in Transaction.currentEntitlements {
             guard let transaction = try? checkVerified(result) else { continue }
             if AppSubscriptionIDs.all.contains(transaction.productID) {
@@ -98,6 +107,7 @@ final class SubscriptionManager: ObservableObject {
                 if let transaction = try? self.checkVerified(result) {
                     await transaction.finish()
                 }
+                await self.refreshSubscriptionStatus()
             }
         }
     }

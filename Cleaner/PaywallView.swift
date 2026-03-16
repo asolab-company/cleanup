@@ -31,7 +31,7 @@ struct PaywallView: View {
                     Spacer()
                 }
 
-                Text("Upgrade for full access")
+                Text("Unlock Premium Cleaning Tools")
                     .font(
                         .system(
                             size: DeviceTraits.isSmallDevice ? 26 : 32,
@@ -41,7 +41,7 @@ struct PaywallView: View {
                     .foregroundStyle(colorFromHex("101015"))
 
                 Text(
-                    "Free up space on your phone in seconds.\nThis app helps you quickly clean your gallery using simple swipes."
+                    "Keep your phone clean and organized with powerful tools that help you regularly detect duplicates, similar photos, screenshots, and large files."
                 )
                 .font(
                     .system(
@@ -138,7 +138,7 @@ struct PaywallView: View {
         }
         .task {
             await subscriptionManager.loadProducts()
-            if await subscriptionManager.hasActiveSubscription() {
+            if await subscriptionManager.checkActiveSubscription() {
                 onUnlocked()
             }
         }
