@@ -3,9 +3,6 @@ import SwiftUI
 import UIKit
 
 struct MainView: View {
-    @ObservedObject var subscriptionManager: SubscriptionManager
-    let onGoPremium: () -> Void
-
     @State private var usedBytes: Int64 = 0
     @State private var totalBytes: Int64 = 1
     @State private var usedStorageGB: Int = 0
@@ -139,17 +136,11 @@ struct MainView: View {
         )
         .task {
             loadStorageInfo()
-            await subscriptionManager.refreshSubscriptionStatus()
             await requestPhotoPermissionOnLaunch()
         }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView(
-                subscriptionManager: subscriptionManager,
-                onBack: { showSettings = false },
-                onGoPremium: {
-                    showSettings = false
-                    onGoPremium()
-                }
+                onBack: { showSettings = false }
             )
         }
         .fullScreenCover(isPresented: $showPhotoAccessDenied) {
@@ -242,10 +233,6 @@ struct MainView: View {
     }
 
     private func openSmartCheck() async {
-        guard subscriptionManager.hasActiveSubscription else {
-            onGoPremium()
-            return
-        }
         if await ensurePhotoPermission() {
             showSmartCheckLoading = true
         } else {
@@ -254,10 +241,6 @@ struct MainView: View {
     }
 
     private func openGallery(_ kind: GallerySwipeView.MediaKind) async {
-        guard subscriptionManager.hasActiveSubscription else {
-            onGoPremium()
-            return
-        }
         if await ensurePhotoPermission() {
             openedGalleryRoute = GalleryRoute(
                 kind: kind,
@@ -408,10 +391,7 @@ private struct MainTileView: View {
 
 struct MainView_Previews: PreviewProvider {
     static var previews: some View {
-        MainView(
-            subscriptionManager: SubscriptionManager(),
-            onGoPremium: {}
-        )
+        MainView()
     }
 }
 

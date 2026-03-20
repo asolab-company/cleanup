@@ -2,9 +2,7 @@ import StoreKit
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var subscriptionManager: SubscriptionManager
     let onBack: () -> Void
-    let onGoPremium: () -> Void
 
     @Environment(\.openURL) private var openURL
     @Environment(\.requestReview) private var requestReview
@@ -34,34 +32,6 @@ struct SettingsView: View {
                     Color.clear.frame(width: 40, height: 40)
                 }
                 .padding(.top, 6)
-
-                if !subscriptionManager.hasActiveSubscription {
-                    Button(action: onGoPremium) {
-                        HStack(spacing: 10) {
-                            Image("app_ic_premium")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 24, height: 24)
-                            Text("Go to Premium")
-                                .font(.system(size: 20, weight: .medium))
-                        }
-                        .foregroundStyle(colorFromHex("FFFFFF"))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 68)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(colorFromHex("3873E9"))
-                        )
-                        .shadow(
-                            color: colorFromHex("3873E9", alpha: 0.8),
-                            radius: 6,
-                            y: 4
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
-                }
             }
 
             ScrollView(showsIndicators: false) {
@@ -175,9 +145,7 @@ private struct SettingsRowContent: View {
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView(
-            subscriptionManager: SubscriptionManager(),
-            onBack: {},
-            onGoPremium: {}
+            onBack: {}
         )
     }
 }
