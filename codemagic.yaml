@@ -2,7 +2,7 @@ workflows:
   ios-workflow:
     name: iOS Workflow
     environment:
-      xcode: 16.4
+      xcode: latest
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.cleanup.utility
