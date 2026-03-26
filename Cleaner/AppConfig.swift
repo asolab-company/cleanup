@@ -9,9 +9,9 @@ enum AppLinks {
 }
 
 enum AppSubscriptionIDs {
-    static let weekly = "weeklyclean"
-    static let monthly = "monthlyclean"
-    static let yearly = "yearlyclean"
+    static let weekly = "weekly"
+    static let monthly = "monthly"
+    static let yearly = "yearly"
 
     static let all = [weekly, monthly, yearly]
 }

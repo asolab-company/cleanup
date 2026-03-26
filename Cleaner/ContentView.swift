@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showPaywall = false
     @State private var appUnlocked = false
     @State private var delayPaywallCloseButton = true
+    @State private var didRequestATT = false
 
     var body: some View {
         Group {
@@ -36,15 +37,33 @@ struct ContentView: View {
                 }
             } else {
                 LoadingView {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    Task { @MainActor in
                         if hasCompletedOnboarding {
-                            appUnlocked = true
+                            await subscriptionManager.refreshSubscriptionStatus()
+                            let hasSubscription =
+                                subscriptionManager.hasActiveSubscription
+
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                if hasSubscription {
+                                    appUnlocked = true
+                                } else {
+                                    delayPaywallCloseButton = false
+                                    showPaywall = true
+                                }
+                            }
                         } else {
-                            showOnboarding = true
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                showOnboarding = true
+                            }
                         }
                     }
                 }
             }
+        }
+        .onAppear {
+            guard !didRequestATT else { return }
+            didRequestATT = true
+            AppsFlyerService.shared.startRespectingTrackingAuthorization()
         }
     }
 }

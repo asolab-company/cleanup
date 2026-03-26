@@ -16,7 +16,6 @@ struct MainView: View {
     @State private var showPhotoAccessDenied = false
     @State private var openedGalleryRoute: GalleryRoute?
     @State private var showSmartCheckLoading = false
-    @State private var smartCheckReport: SmartCheckReport?
 
     var body: some View {
         ZStack {
@@ -169,18 +168,8 @@ struct MainView: View {
             )
         }
         .fullScreenCover(isPresented: $showSmartCheckLoading) {
-            SmartCheckLoadingView(
-                onBack: { showSmartCheckLoading = false },
-                onCompleted: { report in
-                    showSmartCheckLoading = false
-                    smartCheckReport = report
-                }
-            )
-        }
-        .fullScreenCover(item: $smartCheckReport) { report in
-            SmartCheckResultView(
-                report: report,
-                onBack: { smartCheckReport = nil }
+            SmartCheckFlowView(
+                onClose: { showSmartCheckLoading = false }
             )
         }
     }
@@ -254,10 +243,6 @@ struct MainView: View {
     }
 
     private func openGallery(_ kind: GallerySwipeView.MediaKind) async {
-        guard subscriptionManager.hasActiveSubscription else {
-            onGoPremium()
-            return
-        }
         if await ensurePhotoPermission() {
             openedGalleryRoute = GalleryRoute(
                 kind: kind,
