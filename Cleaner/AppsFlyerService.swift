@@ -113,6 +113,25 @@ final class AppsFlyerService {
         #endif
     }
 
+    func trackSubscription(productID: String) {
+        #if canImport(AppsFlyerLib)
+        let values: [AnyHashable: Any] = [
+            "product_id": productID
+        ]
+        AppsFlyerLib.shared().logEvent(
+            "af_app_subscription",
+            withValues: values
+        )
+        logger.info(
+            "AppsFlyer event sent: af_app_subscription, product_id=\(productID, privacy: .public)"
+        )
+        #else
+        logger.info(
+            "AppsFlyer SDK unavailable, skipped event: af_app_subscription, product_id=\(productID, privacy: .public)"
+        )
+        #endif
+    }
+
     @available(iOS 14, *)
     private func statusText(
         _ status: ATTrackingManager.AuthorizationStatus
