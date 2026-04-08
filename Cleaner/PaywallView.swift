@@ -14,8 +14,8 @@ struct PaywallView: View {
     @State private var closeDelayTask: Task<Void, Never>?
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(alignment: .leading, spacing: 14) {
+        GeometryReader { _ in
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     if showCloseButton {
                         Button(action: onClose) {
@@ -31,36 +31,7 @@ struct PaywallView: View {
                     Spacer()
                 }
 
-                Text("Unlock Premium Cleaning Tools")
-                    .font(
-                        .system(
-                            size: DeviceTraits.isSmallDevice ? 26 : 32,
-                            weight: .bold
-                        )
-                    )
-                    .foregroundStyle(colorFromHex("101015"))
-
-                Text(
-                    "Keep your phone clean and organized with powerful tools that help you regularly detect duplicates, similar photos, screenshots, and large files."
-                )
-                .font(
-                    .system(
-                        size: DeviceTraits.isSmallDevice ? 14 : 16,
-                        weight: .regular
-                    )
-                )
-                .foregroundStyle(colorFromHex("101015", alpha: 0.92))
-                if !DeviceTraits.isSmallDevice {
-                    Spacer()
-                }
-                Image("app_bg_paywall")
-                    .resizable()
-                    .scaledToFit()
-
-                    .frame(maxWidth: .infinity, alignment: .center)
-                if !DeviceTraits.isSmallDevice {
-                    Spacer()
-                }
+                PaywallStorageWarningView()
 
                 VStack(spacing: 14) {
                     VStack(spacing: DeviceTraits.isSmallDevice ? 2 : 10) {
@@ -269,6 +240,212 @@ struct PaywallView: View {
         }
     }
 
+}
+
+private struct PaywallStorageWarningView: View {
+    private let targetMemoryUsage: Double = 0.923
+    private let maxBadgeValue = 99
+
+    @State private var currentUsage: Double = 0
+    @State private var currentBadgeValue: Int = 0
+    @State private var plusOpacity: Double = 0
+    @State private var animationTask: Task<Void, Never>?
+
+    private var progressTint: Color {
+        interpolatedProgressColor(
+            progress: currentUsage / targetMemoryUsage
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DeviceTraits.isSmallDevice ? 12 : 16) {
+            if !DeviceTraits.isSmallDevice {
+                HStack {
+                    Spacer()
+                    ZStack(alignment: .topTrailing) {
+                        Image("app_ic_paywall")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(
+                                width: 156,
+                                height: 156
+                            )
+
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text("\(currentBadgeValue)")
+                            Text("+")
+                                .opacity(plusOpacity)
+                                .scaleEffect(0.85 + (0.15 * plusOpacity))
+                        }
+                        .font(.system(size: 12, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 34)
+                        .background(
+                            Circle()
+                                .fill(colorFromHex("FF001F"))
+                        )
+                        .offset(x: -4, y: 15)
+                    }
+                    Spacer()
+                }
+            }
+         
+
+            Text("Memory usage")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(colorFromHex("1B1C24"))
+
+            HStack(spacing: 18) {
+                GeometryReader { proxy in
+                    let progressWidth = max(0, proxy.size.width - 10)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(colorFromHex("DEB5C9"))
+
+                        Capsule()
+                            .fill(progressTint)
+                            .frame(width: progressWidth * currentUsage)
+                            .padding(5)
+                    }
+                }
+                .frame(height: DeviceTraits.isSmallDevice ? 24 : 24)
+
+                Text(
+                    "\((currentUsage * 100).formatted(.number.precision(.fractionLength(1))))%"
+                )
+                .font(.system(size: 20, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(progressTint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            }
+
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: DeviceTraits.isSmallDevice ? 24 : 24))
+                    .foregroundStyle(colorFromHex("E30034"))
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: DeviceTraits.isSmallDevice ? 8 : 10) {
+                    Text("Almost out of memory")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(colorFromHex("1D1D24"))
+
+                    Text("To avoid storage getting full, please clean up your phone.")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(colorFromHex("5F6168"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, DeviceTraits.isSmallDevice ? 24 : 28)
+            .padding(.vertical, DeviceTraits.isSmallDevice ? 22 : 26)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: 100,
+                maxHeight: 100,
+                alignment: .leading
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 36, style: .continuous)
+                    .fill(colorFromHex("DC002A", alpha: 0.1))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 36, style: .continuous)
+                            .stroke(.white.opacity(0.45), lineWidth: 2)
+                    }
+            )
+        }
+    
+        .onAppear(perform: startAnimations)
+        .onDisappear {
+            animationTask?.cancel()
+            animationTask = nil
+        }
+    }
+
+    private func startAnimations() {
+        animationTask?.cancel()
+
+        currentUsage = 0
+        currentBadgeValue = 0
+        plusOpacity = 0
+
+        animationTask = Task {
+            let frameNanoseconds: UInt64 = 16_666_667
+            let startTime = CACurrentMediaTime()
+            let firstDuration = 2.0
+
+            while !Task.isCancelled {
+                let elapsed = CACurrentMediaTime() - startTime
+                let progress = min(max(elapsed / firstDuration, 0), 1)
+
+                await MainActor.run {
+                    currentUsage = targetMemoryUsage * progress
+                    currentBadgeValue = Int(
+                        (Double(maxBadgeValue) * progress).rounded(.down)
+                    )
+                }
+
+                if progress >= 1 {
+                    break
+                }
+
+                try? await Task.sleep(nanoseconds: frameNanoseconds)
+            }
+
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                currentUsage = targetMemoryUsage
+                currentBadgeValue = maxBadgeValue
+            }
+
+            let plusStartTime = CACurrentMediaTime()
+            let plusDuration = 2.0
+
+            while !Task.isCancelled {
+                let elapsed = CACurrentMediaTime() - plusStartTime
+                let progress = min(max(elapsed / plusDuration, 0), 1)
+
+                await MainActor.run {
+                    plusOpacity = progress
+                }
+
+                if progress >= 1 {
+                    break
+                }
+
+                try? await Task.sleep(nanoseconds: frameNanoseconds)
+            }
+        }
+    }
+
+    private func interpolatedProgressColor(progress: Double) -> Color {
+        let clamped = min(max(progress, 0), 1)
+
+        let startRed = 0x38
+        let startGreen = 0x73
+        let startBlue = 0xE9
+
+        let endRed = 0xE3
+        let endGreen = 0x00
+        let endBlue = 0x34
+
+        let red = Double(startRed)
+            + (Double(endRed - startRed) * clamped)
+        let green = Double(startGreen)
+            + (Double(endGreen - startGreen) * clamped)
+        let blue = Double(startBlue)
+            + (Double(endBlue - startBlue) * clamped)
+
+        return Color(
+            .sRGB,
+            red: red / 255,
+            green: green / 255,
+            blue: blue / 255,
+            opacity: 1
+        )
+    }
 }
 
 struct PaywallView_Previews: PreviewProvider {
