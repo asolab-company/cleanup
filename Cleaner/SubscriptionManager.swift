@@ -61,6 +61,9 @@ final class SubscriptionManager: ObservableObject {
                 let transaction = try checkVerified(verification)
                 await transaction.finish()
                 hasActiveSubscription = true
+                AppsFlyerService.shared.trackSubscription(
+                    productID: productID
+                )
                 return true
             case .userCancelled:
                 return false
