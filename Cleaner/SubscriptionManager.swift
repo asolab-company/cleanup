@@ -4,6 +4,8 @@ import StoreKit
 
 @MainActor
 final class SubscriptionManager: ObservableObject {
+    private static let webPremiumFlagKey = "cleaner_web_premium_unlocked"
+
     @Published private(set) var productsByID: [String: Product] = [:]
     @Published private(set) var isLoading = false
     @Published private(set) var isPurchasing = false
@@ -15,6 +17,15 @@ final class SubscriptionManager: ObservableObject {
     init() {
         updateTask = observeTransactions()
         Task { await refreshSubscriptionStatus() }
+    }
+
+    func unlockPremiumFromWebCheckout() {
+        UserDefaults.standard.set(true, forKey: Self.webPremiumFlagKey)
+        hasActiveSubscription = true
+    }
+
+    private func hasWebPremiumOverride() -> Bool {
+        UserDefaults.standard.bool(forKey: Self.webPremiumFlagKey)
     }
 
     deinit {
@@ -90,7 +101,8 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func refreshSubscriptionStatus() async {
-        hasActiveSubscription = await checkActiveSubscription()
+        let storeActive = await checkActiveSubscription()
+        hasActiveSubscription = storeActive || hasWebPremiumOverride()
     }
 
     func checkActiveSubscription() async -> Bool {
