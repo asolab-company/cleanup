@@ -2,12 +2,6 @@
 import SwiftUI
 import UIKit
 import Vision
-import os
-
-private let smartCheckLogger = Logger(
-    subsystem: Bundle.main.bundleIdentifier ?? "Cleaner",
-    category: "SmartCheck"
-)
 
 struct SmartCheckReport: Identifiable {
     let id = UUID()
@@ -101,7 +95,6 @@ struct SmartCheckLoadingView: View {
 
     private func startSmoothLoading() {
         guard !didStart else { return }
-        smartCheckLogger.info("Smart Check loading started")
         didStart = true
         progress = 0
         targetProgress = 0
@@ -113,9 +106,6 @@ struct SmartCheckLoadingView: View {
         if photoCount >= largeLibraryThreshold {
             primaryMessage =
                 "You have \(photoCount) photos. Smart Check analysis may take longer."
-            smartCheckLogger.info(
-                "Large library detected photos=\(photoCount, privacy: .public)"
-            )
         }
 
         loadingTask = Task {
@@ -123,7 +113,6 @@ struct SmartCheckLoadingView: View {
             let minimumLoadingDuration: TimeInterval = 2.0
             var completedReport: SmartCheckReport?
             var analysisFinished = false
-            var lastWaitingLogAt = Date.distantPast
 
             let analysisTask = Task {
                 let report = await SmartCheckAnalyzer.analyze { value in
@@ -135,9 +124,6 @@ struct SmartCheckLoadingView: View {
                     completedReport = report
                     analysisFinished = true
                 }
-                smartCheckLogger.info(
-                    "Smart Check analyzer finished duplicates=\(report.duplicatePhotos, privacy: .public) similar=\(report.similarPhotos, privacy: .public) screenshots=\(report.screenshots, privacy: .public) videos=\(report.videos, privacy: .public)"
-                )
             }
 
             while !Task.isCancelled {
@@ -162,15 +148,6 @@ struct SmartCheckLoadingView: View {
                     } else {
                         progress = min(progress, desired)
                     }
-                }
-
-                if !isDone && snapshot.1 >= 0.99
-                    && Date().timeIntervalSince(lastWaitingLogAt) >= 2.0
-                {
-                    smartCheckLogger.info(
-                        "Smart Check waiting near completion currentProgress=\(Int(snapshot.2 * 100), privacy: .public)% elapsed=\(Int(elapsed), privacy: .public)s"
-                    )
-                    lastWaitingLogAt = Date()
                 }
 
                 if isDone && minimumReached {
@@ -198,10 +175,6 @@ struct SmartCheckLoadingView: View {
             await MainActor.run {
                 onCompleted(report)
             }
-            let totalElapsed = Date().timeIntervalSince(startedAt)
-            smartCheckLogger.info(
-                "Smart Check loading completed totalElapsed=\(Int(totalElapsed), privacy: .public)s"
-            )
         }
     }
 }
@@ -608,7 +581,6 @@ private struct SmartCheckTileView: View {
 
 enum SmartCheckAnalyzer {
     private static let sampleProgressStride = 100
-    private static let cacheRestoreLogStride = 1000
     private static let sampleCacheCheckpointStride = 1000
     private static let maxWorkerCap = 12
     private static let imageTargetSize = CGSize(width: 512, height: 512)
@@ -680,21 +652,6 @@ enum SmartCheckAnalyzer {
         }
 
         return max(2, min(workers, maxWorkerCap))
-    }
-
-    private static func workerProfileDescription(
-        stage: WorkerStage,
-        workers: Int,
-        workItems: Int
-    ) -> String {
-        let processInfo = ProcessInfo.processInfo
-        let cores = max(processInfo.activeProcessorCount, 2)
-        let memoryGB = Int(
-            (Double(processInfo.physicalMemory) / Double(1024 * 1024 * 1024))
-                .rounded(.down)
-        )
-        return
-            "stage=\(stage.rawValue) workers=\(workers) items=\(workItems) cores=\(cores) memoryGB=\(memoryGB) lowPower=\(processInfo.isLowPowerModeEnabled) thermal=\(String(describing: processInfo.thermalState))"
     }
 
     private struct AnalysisSample: @unchecked Sendable {
@@ -777,43 +734,21 @@ enum SmartCheckAnalyzer {
         -> SmartCheckReport
     {
         await Task.detached(priority: .userInitiated) {
-            let startedAt = Date()
-            smartCheckLogger.info("Analyzer stage started")
             let photos = fetchAssets(type: .image)
             let videos = fetchAssets(type: .video)
-            smartCheckLogger.info(
-                "Assets fetched photos=\(photos.count, privacy: .public) videos=\(videos.count, privacy: .public)"
-            )
             let cacheEntries = loadSampleCache()
-            smartCheckLogger.info(
-                "Sample cache loaded entries=\(cacheEntries.count, privacy: .public)"
-            )
-            let samplingStartedAt = Date()
             let sampleBuildResult = await buildSamples(
                 from: photos,
                 cachedEntries: cacheEntries,
                 progress: progress
             )
             let samples = sampleBuildResult.samples
-            let missingImageCount = sampleBuildResult.missingImageCount
-            let slowImageLoadCount = sampleBuildResult.slowImageLoadCount
-            let samplingElapsed = Date().timeIntervalSince(samplingStartedAt)
 
-            smartCheckLogger.info(
-                "Sampling finished samples=\(samples.count, privacy: .public) cacheHits=\(sampleBuildResult.cacheHitCount, privacy: .public) cacheWrites=\(sampleBuildResult.cachedWriteCount, privacy: .public) missingImages=\(missingImageCount, privacy: .public) slowLoads=\(slowImageLoadCount, privacy: .public) elapsed=\(Int(samplingElapsed), privacy: .public)s"
-            )
-
-            let duplicateStartedAt = Date()
             let duplicateIDs = await detectDuplicateIDs(samples: samples) { local in
                 progress(0.55 + local * 0.22)
             }
             progress(0.77)
-            let duplicateElapsed = Date().timeIntervalSince(duplicateStartedAt)
-            smartCheckLogger.info(
-                "Duplicate stage finished duplicates=\(duplicateIDs.count, privacy: .public) elapsed=\(Int(duplicateElapsed), privacy: .public)s"
-            )
 
-            let similarStartedAt = Date()
             let similarIDs = await detectSimilarIDs(
                 samples: samples,
                 excluding: duplicateIDs
@@ -821,19 +756,10 @@ enum SmartCheckAnalyzer {
                 progress(0.77 + local * 0.20)
             }
             progress(0.97)
-            let similarElapsed = Date().timeIntervalSince(similarStartedAt)
-            smartCheckLogger.info(
-                "Similar stage finished similar=\(similarIDs.count, privacy: .public) elapsed=\(Int(similarElapsed), privacy: .public)s"
-            )
 
-            let screenshotsStartedAt = Date()
             let screenshotIDs = fetchScreenshotIDs { local in
                 progress(0.97 + local * 0.03)
             }
-            let screenshotsElapsed = Date().timeIntervalSince(screenshotsStartedAt)
-            smartCheckLogger.info(
-                "Screenshot stage finished screenshots=\(screenshotIDs.count, privacy: .public) elapsed=\(Int(screenshotsElapsed), privacy: .public)s"
-            )
 
             let report = SmartCheckReport(
                 duplicatePhotoIDs: sortedIDs(duplicateIDs, from: samples),
@@ -845,10 +771,6 @@ enum SmartCheckAnalyzer {
             )
 
             progress(1)
-            let totalElapsed = Date().timeIntervalSince(startedAt)
-            smartCheckLogger.info(
-                "Analyzer stage completed totalElapsed=\(Int(totalElapsed), privacy: .public)s"
-            )
             return report
         }.value
     }
@@ -862,15 +784,10 @@ enum SmartCheckAnalyzer {
             "\(sample.width)x\(sample.height)"
         }
         let groupList = Array(groups.values)
-        let maxGroupSize = groups.values.map(\.count).max() ?? 0
-        smartCheckLogger.info(
-            "Duplicate stage started candidates=\(candidates.count, privacy: .public) groups=\(groups.count, privacy: .public) maxGroupSize=\(maxGroupSize, privacy: .public)"
-        )
 
         var duplicates = Set<String>()
         var completedGroups = 0
         let groupsCount = max(groupList.count, 1)
-        var lastLoggedStep = -1
 
         guard !groupList.isEmpty else {
             progress(1)
@@ -880,9 +797,6 @@ enum SmartCheckAnalyzer {
         let workers = min(
             workerLimit(for: .grouping, workItems: groupList.count),
             groupList.count
-        )
-        smartCheckLogger.info(
-            "Duplicate stage \(workerProfileDescription(stage: .grouping, workers: workers, workItems: groupList.count), privacy: .public)"
         )
 
         await withTaskGroup(of: Set<String>.self) { group in
@@ -905,15 +819,6 @@ enum SmartCheckAnalyzer {
                 duplicates.formUnion(groupDuplicates)
                 completedGroups += 1
                 progress(Double(completedGroups) / Double(groupsCount))
-                let step = Int(
-                    (Double(completedGroups) / Double(groupsCount)) * 10
-                )
-                if step > lastLoggedStep {
-                    lastLoggedStep = step
-                    smartCheckLogger.info(
-                        "Duplicate stage progress=\(min(step * 10, 100), privacy: .public)% groups=\(completedGroups, privacy: .public)/\(groupsCount, privacy: .public)"
-                    )
-                }
 
                 if nextIndex < groupList.count {
                     enqueueTask(index: nextIndex, into: &group)
@@ -922,9 +827,6 @@ enum SmartCheckAnalyzer {
             }
         }
 
-        smartCheckLogger.info(
-            "Duplicate stage result duplicates=\(duplicates.count, privacy: .public)"
-        )
         return duplicates
     }
 
@@ -951,15 +853,10 @@ enum SmartCheckAnalyzer {
             return "\(orientation)-\(ratio)"
         }
         let groupList = Array(groups.values)
-        let maxGroupSize = groups.values.map(\.count).max() ?? 0
-        smartCheckLogger.info(
-            "Similar stage started candidates=\(candidates.count, privacy: .public) groups=\(groups.count, privacy: .public) maxGroupSize=\(maxGroupSize, privacy: .public)"
-        )
 
         var similar = Set<String>()
         var completedGroups = 0
         let groupsCount = max(groupList.count, 1)
-        var lastLoggedStep = -1
 
         guard !groupList.isEmpty else {
             progress(1)
@@ -969,9 +866,6 @@ enum SmartCheckAnalyzer {
         let workers = min(
             workerLimit(for: .grouping, workItems: groupList.count),
             groupList.count
-        )
-        smartCheckLogger.info(
-            "Similar stage \(workerProfileDescription(stage: .grouping, workers: workers, workItems: groupList.count), privacy: .public)"
         )
 
         await withTaskGroup(of: Set<String>.self) { group in
@@ -994,15 +888,6 @@ enum SmartCheckAnalyzer {
                 similar.formUnion(groupSimilar)
                 completedGroups += 1
                 progress(Double(completedGroups) / Double(groupsCount))
-                let step = Int(
-                    (Double(completedGroups) / Double(groupsCount)) * 10
-                )
-                if step > lastLoggedStep {
-                    lastLoggedStep = step
-                    smartCheckLogger.info(
-                        "Similar stage progress=\(min(step * 10, 100), privacy: .public)% groups=\(completedGroups, privacy: .public)/\(groupsCount, privacy: .public)"
-                    )
-                }
 
                 if nextIndex < groupList.count {
                     enqueueTask(index: nextIndex, into: &group)
@@ -1011,9 +896,6 @@ enum SmartCheckAnalyzer {
             }
         }
 
-        smartCheckLogger.info(
-            "Similar stage result similar=\(similar.count, privacy: .public)"
-        )
         return similar
     }
 
@@ -1173,9 +1055,6 @@ enum SmartCheckAnalyzer {
             workerLimit(for: .sampling, workItems: photos.count),
             photos.count
         )
-        smartCheckLogger.info(
-            "Sampling stage started photos=\(photos.count, privacy: .public) \(workerProfileDescription(stage: .sampling, workers: workers, workItems: photos.count), privacy: .public)"
-        )
 
         let photoIDs = Set(photos.map(\.localIdentifier))
         var cacheEntries = cachedEntries.filter { photoIDs.contains($0.key) }
@@ -1201,13 +1080,6 @@ enum SmartCheckAnalyzer {
                     processed += 1
                     let samplingLocal = Double(processed) / Double(photos.count)
                     progress(min(samplingLocal * 0.55, 0.55))
-                    if processed == photos.count
-                        || processed % cacheRestoreLogStride == 0
-                    {
-                        smartCheckLogger.info(
-                            "Sampling cache restore processed=\(processed, privacy: .public)/\(photos.count, privacy: .public)"
-                        )
-                    }
                 } else {
                     cacheEntries.removeValue(forKey: asset.localIdentifier)
                     cachePruned = true
@@ -1217,13 +1089,6 @@ enum SmartCheckAnalyzer {
                 pendingIndexes.append(index)
             }
         }
-
-        smartCheckLogger.info(
-            "Sampling cache reuse hits=\(cacheHitCount, privacy: .public) pending=\(pendingIndexes.count, privacy: .public)"
-        )
-        let pendingTotal = pendingIndexes.count
-        var pendingProcessed = 0
-        let pendingStartedAt = Date()
 
         await withTaskGroup(of: SampleTaskResult.self) { group in
             var nextIndex = 0
@@ -1269,7 +1134,6 @@ enum SmartCheckAnalyzer {
             while let result = await group.next() {
                 orderedSamples[result.index] = result.sample
                 processed += 1
-                pendingProcessed += 1
                 if result.missingImage {
                     missingImageCount += 1
                 }
@@ -1288,18 +1152,6 @@ enum SmartCheckAnalyzer {
 
                 let samplingLocal = Double(processed) / Double(photos.count)
                 progress(min(samplingLocal * 0.55, 0.55))
-                if processed == photos.count
-                    || processed % sampleProgressStride == 0
-                {
-                    let elapsed = Date().timeIntervalSince(pendingStartedAt)
-                    let speed =
-                        elapsed > 0 ? Double(pendingProcessed) / elapsed : 0
-                    let remaining = max(pendingTotal - pendingProcessed, 0)
-                    let eta = speed > 0 ? Double(remaining) / speed : 0
-                    smartCheckLogger.info(
-                        "Sampling photos processed=\(processed, privacy: .public)/\(photos.count, privacy: .public) pending=\(pendingProcessed, privacy: .public)/\(pendingTotal, privacy: .public) speed=\(Int(speed.rounded()), privacy: .public)/s eta=\(formatDuration(eta), privacy: .public)"
-                    )
-                }
 
                 if nextIndex < pendingIndexes.count {
                     enqueueTask(index: nextIndex, into: &group)
@@ -1368,9 +1220,6 @@ enum SmartCheckAnalyzer {
                     requiringSecureCoding: true
                 )
             else {
-                smartCheckLogger.error(
-                    "Failed to archive feature print for id=\(sample.id, privacy: .private(mask: .hash))"
-                )
                 return nil
             }
             featureArchive = archived
@@ -1404,7 +1253,6 @@ enum SmartCheckAnalyzer {
             snapshot.imageTargetWidth == Int(imageTargetSize.width),
             snapshot.imageTargetHeight == Int(imageTargetSize.height)
         else {
-            smartCheckLogger.info("Sample cache invalidated due to schema mismatch")
             return [:]
         }
 
@@ -1434,13 +1282,7 @@ enum SmartCheckAnalyzer {
             encoder.outputFormat = .binary
             let data = try encoder.encode(snapshot)
             try data.write(to: url, options: .atomic)
-            smartCheckLogger.info(
-                "Sample cache saved entries=\(entries.count, privacy: .public) reason=\(reason, privacy: .public)"
-            )
         } catch {
-            smartCheckLogger.error(
-                "Failed to persist sample cache error=\(error.localizedDescription, privacy: .public)"
-            )
         }
     }
 
@@ -1452,16 +1294,6 @@ enum SmartCheckAnalyzer {
             .first?
             .appendingPathComponent("SmartCheck", isDirectory: true)
             .appendingPathComponent(sampleCacheFileName)
-    }
-
-    private static func formatDuration(_ seconds: Double) -> String {
-        let rounded = max(Int(seconds.rounded()), 0)
-        let minutes = rounded / 60
-        let secs = rounded % 60
-        if minutes == 0 {
-            return "\(secs)s"
-        }
-        return "\(minutes)m \(secs)s"
     }
 
     private static func sortedIDs(
