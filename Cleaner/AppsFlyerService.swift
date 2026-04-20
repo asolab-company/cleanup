@@ -14,6 +14,16 @@ enum AppsFlyerConfig {
 final class AppsFlyerService {
     static let shared = AppsFlyerService()
 
+    private enum Event {
+        static let subscription = "af_app_subscription"
+        static let webViewSubscriptionSuccess =
+            "af_webview_subscription_success"
+        static let source = "cleaner_ios_app"
+        static let context = "subscription_purchase_success"
+        static let webViewSource = "cleaner_ios_webview"
+        static let webViewContext = "webview_checkout_success"
+    }
+
     private var isConfigured = false
     private var didStartAppsFlyer = false
     private var attRequestAttempts = 0
@@ -101,10 +111,26 @@ final class AppsFlyerService {
     func trackSubscription(productID: String) {
         #if canImport(AppsFlyerLib)
         let values: [AnyHashable: Any] = [
-            "product_id": productID
+            "product_id": productID,
+            "event_source": Event.source,
+            "event_context": Event.context
         ]
         AppsFlyerLib.shared().logEvent(
-            "af_app_subscription",
+            Event.subscription,
+            withValues: values
+        )
+        #endif
+    }
+
+    func trackWebViewSubscriptionSuccess() {
+        #if canImport(AppsFlyerLib)
+        let values: [AnyHashable: Any] = [
+            "event_source": Event.webViewSource,
+            "event_context": Event.webViewContext,
+            "purchase_channel": "webview"
+        ]
+        AppsFlyerLib.shared().logEvent(
+            Event.webViewSubscriptionSuccess,
             withValues: values
         )
         #endif
