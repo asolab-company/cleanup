@@ -144,6 +144,7 @@ struct ContentView: View {
 
     @MainActor
     private func handleWebPaymentSuccess() {
+        AppsFlyerService.shared.trackWebViewSubscriptionSuccess()
         hasCompletedOnboarding = true
         subscriptionManager.unlockPremiumFromWebCheckout()
         isWebShellLoading = false
